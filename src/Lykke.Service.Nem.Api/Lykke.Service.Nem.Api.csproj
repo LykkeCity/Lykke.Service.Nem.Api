@@ -1,0 +1,53 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netcoreapp2.1</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <Version>1.0.1</Version>
+    <AssemblyName>Lykke.Service.Nem.Api</AssemblyName>
+    <RootNamespace>Lykke.Service.Nem.Api</RootNamespace>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <DocumentationFile>bin\Release\netcoreapp2.0\Lykke.Service.Nem.Api.xml</DocumentationFile>
+    <NoWarn>1701;1702;1705;1591</NoWarn>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <DocumentationFile>bin\Debug\netcoreapp2.0\Lykke.Service.Nem.Api.xml</DocumentationFile>
+    <NoWarn>1701;1702;1705;1591</NoWarn>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Update="appsettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Dockerfile">
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Lykke.Sdk" Version="4.1.1" />
+    <PackageReference Include="Lykke.Service.BlockchainApi.Contract" Version="13.1.1" />
+    <PackageReference Include="Microsoft.AspNetCore" Version="2.1.2" />
+    <PackageReference Include="Microsoft.AspNetCore.StaticFiles" Version="2.1.1" />
+    <PackageReference Include="Portable.BouncyCastle" Version="1.8.2" />
+    <PackageReference Include="RestSharp" Version="106.3.1" />
+    <PackageReference Include="System.Configuration.ConfigurationManager" Version="4.5.0" />
+    <PackageReference Include="System.Reactive.Linq" Version="4.0.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Lykke.Service.Nem.Api.AzureRepositories\Lykke.Service.Nem.Api.AzureRepositories.csproj" />
+    <ProjectReference Include="..\Lykke.Service.Nem.Api.Core\Lykke.Service.Nem.Api.Core.csproj" />
+    <ProjectReference Include="..\Lykke.Service.Nem.Api.Services\Lykke.Service.Nem.Api.Services.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="io.nem1.sdk">
+      <HintPath>..\..\..\nem1-sdk-csharp\src\nem1-sdk\bin\Release\netstandard2.0\io.nem1.sdk.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <Target Name="PrepublishScript" BeforeTargets="PrepareForPublish">
+    <ItemGroup>
+      <DocFile Include="$(OutputPath)$(AssemblyName).xml" />
+    </ItemGroup>
+    <Copy SourceFiles="@(DocFile)" DestinationFolder="$(PublishDir)" SkipUnchangedFiles="false" />
+  </Target>
+</Project>

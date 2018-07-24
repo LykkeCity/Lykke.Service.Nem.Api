@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netcoreapp2.1</TargetFramework>
+    <AssemblyName>Lykke.Service.Nem.Api.Services</AssemblyName>
+    <RootNamespace>Lykke.Service.Nem.Api.Services</RootNamespace>
+    <Version>1.0.0</Version>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Lykke.Service.Nem.Api.Core\Lykke.Service.Nem.Api.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="io.nem1.sdk">
+      <HintPath>..\..\..\nem1-sdk-csharp\src\nem1-sdk\bin\Release\netstandard2.0\io.nem1.sdk.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+</Project>

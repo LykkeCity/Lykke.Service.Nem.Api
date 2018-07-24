@@ -1,0 +1,14 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netcoreapp2.1</TargetFramework>
+    <AssemblyName>Lykke.Service.Nem.Api.AzureRepositories</AssemblyName>
+    <RootNamespace>Lykke.Service.Nem.Api.AzureRepositories</RootNamespace>
+    <Version>1.0.0</Version>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Lykke.AzureStorage" Version="8.10.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Lykke.Service.Nem.Api.Core\Lykke.Service.Nem.Api.Core.csproj" />
+  </ItemGroup>
+</Project>
