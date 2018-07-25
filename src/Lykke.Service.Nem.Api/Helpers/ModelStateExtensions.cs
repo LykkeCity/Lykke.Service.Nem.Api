@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 using Common;
 using io.nem1.sdk.Model.Accounts;
 using io.nem1.sdk.Model.Mosaics;
