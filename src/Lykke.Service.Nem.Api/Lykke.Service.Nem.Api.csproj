@@ -36,8 +36,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Lykke.Service.Nem.Api.AzureRepositories\Lykke.Service.Nem.Api.AzureRepositories.csproj" />
-    <ProjectReference Include="..\Lykke.Service.Nem.Api.Core\Lykke.Service.Nem.Api.Core.csproj" />
-    <ProjectReference Include="..\Lykke.Service.Nem.Api.Services\Lykke.Service.Nem.Api.Services.csproj" />
+    <ProjectReference Include="..\Lykke.Service.Nem.Api.Core\Lykke.Service.Nem.Api.Domain.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="io.nem1.sdk">

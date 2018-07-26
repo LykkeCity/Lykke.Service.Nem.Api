@@ -6,7 +6,7 @@
     <Version>1.0.0</Version>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Lykke.Service.Nem.Api.Core\Lykke.Service.Nem.Api.Core.csproj" />
+    <ProjectReference Include="..\Lykke.Service.Nem.Api.Core\Lykke.Service.Nem.Api.Domain.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="io.nem1.sdk">

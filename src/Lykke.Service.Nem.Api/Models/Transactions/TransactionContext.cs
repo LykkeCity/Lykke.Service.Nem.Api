@@ -1,4 +1,4 @@
-﻿namespace Lykke.Service.Nem.Api.Models
+﻿namespace Lykke.Service.Nem.Api.Models.Transactions
 {
     public class TransactionContext
     {

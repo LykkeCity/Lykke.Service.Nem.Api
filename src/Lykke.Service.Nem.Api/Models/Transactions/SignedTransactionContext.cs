@@ -1,6 +1,6 @@
 ﻿using io.nem1.sdk.Model.Transactions;
 
-namespace Lykke.Service.Nem.Api.Models
+namespace Lykke.Service.Nem.Api.Models.Transactions
 {
     public class SignedTransactionContext
     {

@@ -7,6 +7,9 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Lykke.Service.BlockchainApi.Contract;
+using Lykke.AzureStorage.Tables.Entity.Metamodel;
+using Lykke.AzureStorage.Tables.Entity.Metamodel.Providers;
 
 namespace Lykke.Service.Nem.Api
 {
@@ -15,7 +18,9 @@ namespace Lykke.Service.Nem.Api
     {
         [UsedImplicitly]
         public IServiceProvider ConfigureServices(IServiceCollection services)
-        {                                   
+        {
+            EntityMetamodel.Configure(new AnnotationsBasedMetamodelProvider());
+
             return services.BuildServiceProvider<AppSettings>(options =>
             {
                 options.SwaggerOptions = new LykkeSwaggerOptions { ApiTitle = "NemApi" };
@@ -50,8 +55,10 @@ namespace Lykke.Service.Nem.Api
         [UsedImplicitly]
         public void Configure(IApplicationBuilder app)
         {
-            app.UseLykkeConfiguration();
-
+            app.UseLykkeConfiguration(options => 
+            {
+                options.DefaultErrorHandler = ex => BlockchainErrorResponse.FromUnknownError(ex.ToString());
+            });
         }
     }
 }

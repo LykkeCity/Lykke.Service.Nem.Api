@@ -9,6 +9,6 @@
     <PackageReference Include="Lykke.AzureStorage" Version="8.10.0" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Lykke.Service.Nem.Api.Core\Lykke.Service.Nem.Api.Core.csproj" />
+    <ProjectReference Include="..\Lykke.Service.Nem.Api.Core\Lykke.Service.Nem.Api.Domain.csproj" />
   </ItemGroup>
 </Project>

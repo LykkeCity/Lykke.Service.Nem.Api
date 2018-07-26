@@ -3,11 +3,12 @@ using Common;
 using io.nem1.sdk.Model.Accounts;
 using io.nem1.sdk.Model.Mosaics;
 using Lykke.Service.BlockchainApi.Contract.Transactions;
-using Lykke.Service.Nem.Api.Models;
+using Lykke.Service.Nem.Api.Models.Transactions;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.WindowsAzure.Storage.Table;
 using Newtonsoft.Json;
 
-namespace Microsoft.AspNetCore.Mvc
+namespace Lykke.Service.Nem.Api.Helpers
 {
     public static class ModelStateExtensions
     {
@@ -100,6 +101,26 @@ namespace Microsoft.AspNetCore.Mvc
             }
 
             return modelState.IsValid;
+        }
+
+        public static bool IsValidAzureContinuation(this ModelStateDictionary modelState, string continuation)
+        {
+            // kinda specific knowledge but there is no 
+            // another way to ensure continuation token
+            if (!string.IsNullOrEmpty(continuation))
+            {
+                try
+                {
+                    JsonConvert.DeserializeObject<TableContinuationToken>(Utils.HexToString(continuation));
+                }
+                catch
+                {
+                    modelState.AddModelError(nameof(continuation), "Invalid continuation token");
+                    return false;
+                }
+            }
+
+            return true;
         }
     }
 }

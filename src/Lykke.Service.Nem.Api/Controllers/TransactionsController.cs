@@ -11,7 +11,8 @@ using io.nem1.sdk.Model.Transactions;
 using io.nem1.sdk.Model.Transactions.Messages;
 using Lykke.Service.BlockchainApi.Contract;
 using Lykke.Service.BlockchainApi.Contract.Transactions;
-using Lykke.Service.Nem.Api.Models;
+using Lykke.Service.Nem.Api.Helpers;
+using Lykke.Service.Nem.Api.Models.Transactions;
 using Lykke.Service.Nem.Api.Settings;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -110,7 +111,7 @@ namespace Lykke.Service.Nem.Api.Controllers
 
         [HttpPost("broadcast")]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<IActionResult> Broadcast(BroadcastTransactionRequest request)
+        public async Task<IActionResult> Broadcast([FromBody] BroadcastTransactionRequest request)
         {
             if (!ModelState.IsValid ||
                 !ModelState.IsValidRequest(request, out var context))
