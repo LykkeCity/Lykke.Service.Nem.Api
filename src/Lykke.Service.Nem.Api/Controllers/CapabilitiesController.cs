@@ -17,7 +17,9 @@ namespace Lykke.Service.Nem.Api.Controllers
                 IsTestingTransfersSupported = false,
                 IsPublicAddressExtensionRequired = false,
                 IsReceiveTransactionRequired = false,
-                CanReturnExplorerUrl = true
+                CanReturnExplorerUrl = true,
+                IsAddressMappingRequired = false,
+                IsExclusiveWithdrawalsRequired = false
             };
         }
     }

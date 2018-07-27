@@ -3,6 +3,7 @@ using Common;
 using io.nem1.sdk.Model.Accounts;
 using io.nem1.sdk.Model.Mosaics;
 using Lykke.Service.BlockchainApi.Contract.Transactions;
+using Lykke.Service.Nem.Api.Domain.Assets;
 using Lykke.Service.Nem.Api.Models.Transactions;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.WindowsAzure.Storage.Table;
@@ -40,7 +41,7 @@ namespace Lykke.Service.Nem.Api.Helpers
             return true;
         }
 
-        public static bool IsValidAssetId(this ModelStateDictionary modelState, string assetId, string field = null)
+        public static bool IsValidNemMosaicId(this ModelStateDictionary modelState, string assetId, string field = null)
         {
             try
             {
@@ -67,7 +68,7 @@ namespace Lykke.Service.Nem.Api.Helpers
                 modelState.IsValidOperationId(request.OperationId, nameof(BuildSingleTransactionRequest.OperationId));
                 modelState.IsValidAddress(request.FromAddress, nameof(BuildSingleTransactionRequest.FromAddress));
                 modelState.IsValidAddress(request.ToAddress, nameof(BuildSingleTransactionRequest.ToAddress));
-                modelState.IsValidAssetId(request.AssetId);
+                modelState.IsValidNemMosaicId(request.AssetId);
 
                 if (!ulong.TryParse(request.Amount, out amount) || amount == 0)
                 {

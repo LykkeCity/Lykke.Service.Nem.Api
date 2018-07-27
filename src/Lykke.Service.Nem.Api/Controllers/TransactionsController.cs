@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
@@ -11,6 +12,9 @@ using io.nem1.sdk.Model.Transactions;
 using io.nem1.sdk.Model.Transactions.Messages;
 using Lykke.Service.BlockchainApi.Contract;
 using Lykke.Service.BlockchainApi.Contract.Transactions;
+using Lykke.Service.Nem.Api.Domain.Assets;
+using Lykke.Service.Nem.Api.Domain.Helpers;
+using Lykke.Service.Nem.Api.Domain.Operations;
 using Lykke.Service.Nem.Api.Helpers;
 using Lykke.Service.Nem.Api.Models.Transactions;
 using Lykke.Service.Nem.Api.Settings;
@@ -24,11 +28,15 @@ namespace Lykke.Service.Nem.Api.Controllers
     public class TransactionsController : Controller
     {
         private readonly BlockchainSettings _bcnSettings;
+        private readonly IOperationRepository _operationRepository;
+        private readonly IAssetRepository _assetRepository;
         private static readonly string _xemId = $"{Xem.NamespaceName}:{Xem.MosaicName}";
 
-        public TransactionsController(BlockchainSettings bcnSettings)
+        public TransactionsController(BlockchainSettings bcnSettings, IOperationRepository operationRepository, IAssetRepository assetRepository)
         {
             _bcnSettings = bcnSettings;
+            _operationRepository = operationRepository;
+            _assetRepository = assetRepository;
         }
 
         [HttpPost("single")]
@@ -40,6 +48,18 @@ namespace Lykke.Service.Nem.Api.Controllers
                 !ModelState.IsValidRequest(request, out ulong amount))
             {
                 return BadRequest(ModelState);
+            }
+
+            var asset = await _assetRepository.Get(request.AssetId);
+            if (asset == null)
+            {
+                return BadRequest(BlockchainErrorResponse.Create("Unknown assetId"));
+            }
+
+            var operation = await _operationRepository.Get(request.OperationId);
+            if (operation != null && operation.IsSent())
+            {
+                return StatusCode(StatusCodes.Status409Conflict, BlockchainErrorResponse.Create("Operation is already sent"));
             }
 
             // calculate amounts and fees
@@ -59,7 +79,10 @@ namespace Lykke.Service.Nem.Api.Controllers
             {
                 if (request.IncludeFee)
                 {
-                    amount -= tx.Fee;
+                    if (amount <= tx.Fee)
+                        return BadRequest(BlockchainErrorResponse.FromKnownError(BlockchainErrorCode.AmountIsTooSmall));
+                    else
+                        amount -= tx.Fee;
                 }
 
                 requiredNative = requiredNative + amount;
@@ -68,11 +91,6 @@ namespace Lykke.Service.Nem.Api.Controllers
             else
             {
                 // TODO: support mosaics with non-zero levy
-            }
-
-            if (amount <= 0)
-            {
-                return BadRequest(BlockchainErrorResponse.FromKnownError(BlockchainErrorCode.AmountIsTooSmall));
             }
 
             // check balance of FromAddress
@@ -92,6 +110,11 @@ namespace Lykke.Service.Nem.Api.Controllers
                 return BadRequest(BlockchainErrorResponse.FromKnownError(BlockchainErrorCode.NotEnoughBalance));
             }
 
+            // store operation
+
+            await _operationRepository.Upsert(request.OperationId, request.FromAddress, request.ToAddress, request.IncludeFee,
+                amount, asset.ToDecimal(amount), tx.Fee, asset.ToDecimal(tx.Fee), request.AssetId);
+
             // build context for signing
 
             var context = new TransactionContext
@@ -109,6 +132,16 @@ namespace Lykke.Service.Nem.Api.Controllers
             });
         }
 
+        [HttpPost("single/receive")]
+        [HttpPost("many-inputs")]
+        [HttpPost("many-outputs")]
+        [HttpPut()]
+        [ProducesResponseType(StatusCodes.Status501NotImplemented)]
+        public IActionResult NotImplemented()
+        {
+            return StatusCode(StatusCodes.Status501NotImplemented);
+        }
+
         [HttpPost("broadcast")]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Broadcast([FromBody] BroadcastTransactionRequest request)
@@ -119,6 +152,17 @@ namespace Lykke.Service.Nem.Api.Controllers
                 return BadRequest(ModelState);
             }
 
+            var operation = await _operationRepository.Get(request.OperationId);
+            if (operation != null && operation.IsSent())
+            {
+                return StatusCode(StatusCodes.Status409Conflict,
+                    BlockchainErrorResponse.Create($"Operation [{request.OperationId}] already broadcasted"));
+            }
+
+            // For now transaction can be safely broadcasted multiple times.
+            // Any subsequent try, after the first successful, is accepted by node but does nothing within blockchain.
+            // So we can simply repeat failed requests until all data stored successfully.
+            
             var signedTransaction = SignedTransaction.Create(
                 context.Payload.GetHexStringToBytes(),
                 context.Signature.GetHexStringToBytes(),
@@ -129,6 +173,27 @@ namespace Lykke.Service.Nem.Api.Controllers
             var http = new TransactionHttp(_bcnSettings.Host);
 
             var data = await http.Announce(signedTransaction);
+
+            switch (data.Code)
+            {
+                case 0:
+                case 1:
+                    // success
+                    break;
+                case 3:
+                    return this.BadRequest(BlockchainErrorResponse.Create("Transaction expired"));
+                case 5:
+                    return this.BadRequest(BlockchainErrorResponse.FromKnownError(BlockchainErrorCode.NotEnoughBalance));
+                default:
+                    return this.BadRequest(data);
+            }
+
+            var expiryTime = DateTime.UtcNow.AddMinutes(_bcnSettings.ExpiresInMinutes);
+
+            await _operationRepository.UpsertOperationIdByTxId(request.OperationId, data.Hash);
+            await _operationRepository.UpsertOperationIdByExpiryTime(request.OperationId, expiryTime);
+            await _operationRepository.Update(request.OperationId, 
+                sendTime: DateTime.UtcNow, expiryTime: expiryTime, txId: data.Hash);
 
             return Ok(data);
         }
