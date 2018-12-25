@@ -20,11 +20,11 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="io.nem1.sdk" Version="1.0.12" />
+    <PackageReference Include="io.nem1.sdk" Version="1.0.13" />
     <PackageReference Include="Lykke.Sdk" Version="5.3.0" />
+    <PackageReference Include="Lykke.Service.BlockchainApi.Sdk" Version="0.0.15" />
     <PackageReference Include="Microsoft.AspNetCore" Version="2.1.6" />
     <PackageReference Include="Microsoft.AspNetCore.StaticFiles" Version="2.1.1" />
-    <PackageReference Include="Lykke.Service.BlockchainApi.Sdk" Version="0.0.9" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="2.2.0" />
   </ItemGroup>
   <ItemGroup>

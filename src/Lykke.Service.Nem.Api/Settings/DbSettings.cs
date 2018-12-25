@@ -6,5 +6,8 @@ namespace Lykke.Service.Nem.Api.Settings
     {
         [AzureTableCheck]
         public string LogsConnString { get; set; }
+
+        [AzureTableCheck]
+        public string DataConnString { get; set; }
     }
 }

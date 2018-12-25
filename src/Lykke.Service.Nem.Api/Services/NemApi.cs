@@ -21,9 +21,12 @@ namespace Lykke.Service.Nem.Api.Services
 {
     public class NemApi : IBlockchainApi
     {
-        const string AddressSeparator = "$";
+        const char AddressSeparator = '$';
         const string XEM = "nem:xem";
-        
+
+        readonly static DateTime _nemesis = 
+            new DateTime(2015, 03, 29, 0, 6, 25, 0).ToUniversalTime();
+
         readonly string _nemUrl;
         readonly string _explorerUrl;
         readonly int _requiredConfirmations;
@@ -53,8 +56,7 @@ namespace Lykke.Service.Nem.Api.Services
 
         public async Task<string> BroadcastTransactionAsync(string signedTransaction)
         {
-            var announceRequest = JsonConvert.DeserializeObject<NemRequestAnnounce>(signedTransaction);
-            var result = await _client.AnnounceTransaction(announceRequest);
+            var result = await new TransactionHttp(_nemUrl).Announce(SignedTransaction.FromJson(signedTransaction));
 
             // see https://nemproject.github.io/#nemRequestResult 
             // for meaning of the code 
@@ -79,7 +81,8 @@ namespace Lykke.Service.Nem.Api.Services
             return "";
         }
 
-        public async Task<(string transactionContext, decimal fee, long expiration)> BuildTransactionAsync(Guid operationId, IAsset asset, IReadOnlyList<IOperationAction> actions, bool includeFee)
+        public async Task<(string transactionContext, decimal fee, long expiration)> BuildTransactionAsync(Guid operationId, 
+            IAsset asset, IReadOnlyList<IOperationAction> actions, bool includeFee)
         {
             // from one side NEM supports single sender and single receiver per transaction,
             // from the other side we support single asset per transaction,
@@ -173,6 +176,13 @@ namespace Lykke.Service.Nem.Api.Services
             );
         }
 
+        public bool CanGetBalances => false;
+
+        public Task DeleteAddressObservationAsync(string address) => Task.CompletedTask;
+
+        public Task<BlockchainBalance[]> GetBalancesAsync(string[] addresses, Func<string, Task<IAsset>> getAsset) =>
+            Task.FromException<BlockchainBalance[]>(new NotImplementedException());
+
         public CapabilitiesResponse GetCapabilities()
         {
             return new CapabilitiesResponse()
@@ -189,7 +199,18 @@ namespace Lykke.Service.Nem.Api.Services
             };
         }
 
-        public ConstantsResponse GetConstants() => new ConstantsResponse();
+        public ConstantsResponse GetConstants()
+        {
+            return new ConstantsResponse
+            {
+                PublicAddressExtension = new PublicAddressExtensionConstantsContract 
+                { 
+                    BaseDisplayName = "Address",
+                    DisplayName = "Message",
+                    Separator = AddressSeparator
+                }
+            };
+        }
 
         public string[] GetExplorerUrl(string address)
         {
@@ -197,18 +218,19 @@ namespace Lykke.Service.Nem.Api.Services
                 ? new string[] { string.Format(_explorerUrl, address) }
                 : new string[] { };
         }
-
+ 
         public async Task<long> GetLastConfirmedBlockNumberAsync() =>
-            (await _client.GetBlockchainHeight()).Height - _requiredConfirmations;
+            (long)((await new BlockchainHttp(_nemUrl).GetBlockchainHeight()) - (ulong)_requiredConfirmations);
 
         public async Task<BlockchainTransaction> GetTransactionAsync(string transactionHash, long expiration, IAsset asset)
         {
-            var tx = await _client.GetTransaction(transactionHash);
+            var tx = await new TransactionHttp(_nemUrl).GetByHash(transactionHash);
 
-            if (tx == null || tx.Meta.Height == null)
+            if (tx == null || tx.TransactionInfo.Height == 0)
             {
-                var lastConfirmedBlock = await _client.GetBlock(
-                    await GetLastConfirmedBlockNumberAsync());
+                var http = new BlockchainHttp(_nemUrl);
+                var currentBlockchainHeight = await http.GetBlockchainHeight();
+                var lastConfirmedBlock = await http.GetBlockByHeight(currentBlockchainHeight - (ulong)_requiredConfirmations);
 
                 return lastConfirmedBlock.TimeStamp > expiration
                     ? BlockchainTransaction.Failed("Transaction expired", BlockchainErrorCode.BuildingShouldBeRepeated)
@@ -216,29 +238,29 @@ namespace Lykke.Service.Nem.Api.Services
             }
             else
             {
-                var blockNumber = tx.Meta.Height.Value;
-                var blockTime = _nemesisTimestamp.AddSeconds(tx.Transaction.TimeStamp);
-                var from = NemUtils.PublicKeyToAddress(tx.Transaction.Signer, _networkType);
-                var transfers = tx.Transaction.Mosaics == null || tx.Transaction.Mosaics.Length == 0
-                    ? new[] { new { actionId = transactionHash.CalculateHexHash32(), amount = Convert.ToDecimal(tx.Transaction.Amount * 1e-6) } }
-                    : tx.Transaction.Mosaics.Select(m => new { actionId = m.MosaicId.ToString().CalculateHexHash32(), amount = asset.FromBaseUnit(m.Quantity) });
-                var actions = transfers.SelectMany(x => new[]
-                    {
-                        new BlockchainAction(x.actionId, blockNumber, blockTime, transactionHash, from, asset.AssetId, (-1) * x.amount),
-                        new BlockchainAction(x.actionId, blockNumber, blockTime, transactionHash, tx.Transaction.Recipient, asset.AssetId, x.amount),
-                    });
+                var transfer = tx as TransferTransaction ?? 
+                    throw new ArgumentException("Transaction must be of Transfer type");
+
+                var blockNumber = (long)transfer.TransactionInfo.Height;
+                var blockTime = _nemesis.AddSeconds(transfer.TransactionInfo.TimeStamp);
+                var actions = new List<BlockchainAction>();
+
+                foreach (var mos in transfer.Mosaics)
+                {
+                    if (asset.AssetId != $"{mos.NamespaceName}:{mos.MosaicName}")
+                        continue;
+
+                    var actionId = $"{asset.AssetId}:{mos.Amount}".CalculateHexHash32();
+                    var amount = asset.FromBaseUnit((long)mos.Amount);
+
+                    actions.Add(new BlockchainAction(actionId, blockNumber, blockTime, transactionHash, transfer.Signer.Address.Plain, asset.AssetId, (-1) * amount));
+                    actions.Add(new BlockchainAction(actionId, blockNumber, blockTime, transactionHash, transfer.Address.Plain, asset.AssetId, amount));
+                }
 
                 return BlockchainTransaction.Completed(blockNumber, blockTime, actions.ToArray());
             }
         }
 
         public Task ObserveAddressAsync(string address) => Task.CompletedTask;
-
-        public Task DeleteAddressObservationAsync(string address) => Task.CompletedTask;
-
-        public bool CanGetBalances => false;
-
-        public Task<BlockchainBalance[]> GetBalancesAsync(string[] addresses, Func<string, Task<IAsset>> getAsset) =>
-            Task.FromException<BlockchainBalance[]>(new NotImplementedException());
     }
 }

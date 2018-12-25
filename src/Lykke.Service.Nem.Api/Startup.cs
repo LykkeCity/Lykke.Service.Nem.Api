@@ -3,9 +3,9 @@ using System.Net.Http;
 using JetBrains.Annotations;
 using Lykke.Sdk;
 using Lykke.Service.BlockchainApi.Sdk;
-using Lykke.Service.Nem.Api.Blockchain;
 using Lykke.Service.Nem.Api.Services;
 using Lykke.Service.Nem.Api.Settings;
+using Lykke.SettingsReader;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -16,7 +16,7 @@ namespace Lykke.Service.Nem.Api
     {
         private readonly LykkeSwaggerOptions _swaggerOptions = new LykkeSwaggerOptions
         {
-            ApiTitle = "NemApi API",
+            ApiTitle = "Nem Api",
             ApiVersion = "v1"
         };
 
@@ -29,22 +29,21 @@ namespace Lykke.Service.Nem.Api
 
                 options.Logs = logs =>
                 {
-                    logs.AzureTableName = "Nem.ApiLog";
+                    logs.AzureTableName = "NemApiLog";
                     logs.AzureTableConnectionStringResolver = settings => settings.NemApi.Db.LogsConnString;
                 };
 
-                options.Extend = (svcCollection, settings) =>
+                options.Extend = (sc, settings) =>
                 {
-                    svcCollection
-                        .AddHttpClient()
-                        .AddBlockchainApi(sp => 
-                            new NemApi(
-                                settings.CurrentValue.NemApi.NemUrl,
-                                settings.CurrentValue.NemApi.ExplorerUrl,
-                                settings.CurrentValue.NemApi.RequiredConfirmations,
-                                settings.CurrentValue.NemApi.ExpiresInMinutes,
-                                settings.CurrentValue.NemApi.Network,
-                                sp.GetRequiredService<INemClient>()));
+                    sc.AddBlockchainApi(
+                        settings.ConnectionString(s => s.NemApi.Db.DataConnString),
+                        _ => new NemApi(
+                            settings.CurrentValue.NemApi.NemUrl,
+                            settings.CurrentValue.NemApi.ExplorerUrl,
+                            settings.CurrentValue.NemApi.RequiredConfirmations,
+                            settings.CurrentValue.NemApi.ExpiresInMinutes
+                        )
+                    );
                 };
             });
         }

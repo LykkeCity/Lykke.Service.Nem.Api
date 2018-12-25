@@ -11,7 +11,6 @@ namespace Lykke.Service.Nem.Api.Settings
         public string     NemUrl                { get; set; }
         public int        RequiredConfirmations { get; set; }
         public int        ExpiresInMinutes      { get; set; }
-        public string     Network               { get; set; }
         public DbSettings Db                    { get; set; }
     }
 }
