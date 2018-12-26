@@ -46,7 +46,7 @@ namespace Lykke.Service.Nem.Api.Services
         {
             try
             {
-                return Address.CreateFromEncoded(address) != null;
+                return Address.CreateFromEncoded(address.Split(AddressSeparator)[0]) != null;
             }
             catch
             {
@@ -170,7 +170,7 @@ namespace Lykke.Service.Nem.Api.Services
             }
 
             return (
-                tx.ToJson().ToBase64(),
+                tx.ToJson(),
                 Convert.ToDecimal(fee.fee * 1e-6),
                 deadline.GetInstant()
             );
@@ -243,6 +243,10 @@ namespace Lykke.Service.Nem.Api.Services
 
                 var blockNumber = (long)transfer.TransactionInfo.Height;
                 var blockTime = _nemesis.AddSeconds(transfer.TransactionInfo.TimeStamp);
+                var memo = (transfer.Message as PlainMessage)?.GetStringPayload();
+                var to = string.IsNullOrEmpty(memo)
+                    ? transfer.Address.Plain
+                    : transfer.Address.Plain + AddressSeparator + memo;
                 var actions = new List<BlockchainAction>();
 
                 foreach (var mos in transfer.Mosaics)
@@ -254,7 +258,7 @@ namespace Lykke.Service.Nem.Api.Services
                     var amount = asset.FromBaseUnit((long)mos.Amount);
 
                     actions.Add(new BlockchainAction(actionId, blockNumber, blockTime, transactionHash, transfer.Signer.Address.Plain, asset.AssetId, (-1) * amount));
-                    actions.Add(new BlockchainAction(actionId, blockNumber, blockTime, transactionHash, transfer.Address.Plain, asset.AssetId, amount));
+                    actions.Add(new BlockchainAction(actionId, blockNumber, blockTime, transactionHash, to, asset.AssetId, amount));
                 }
 
                 return BlockchainTransaction.Completed(blockNumber, blockTime, actions.ToArray());
