@@ -3,45 +3,34 @@
     <TargetFramework>netcoreapp2.1</TargetFramework>
     <OutputType>Exe</OutputType>
     <Version>1.0.1</Version>
-    <AssemblyName>Lykke.Service.Nem.Api</AssemblyName>
-    <RootNamespace>Lykke.Service.Nem.Api</RootNamespace>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-    <DocumentationFile>bin\Release\netcoreapp2.0\Lykke.Service.Nem.Api.xml</DocumentationFile>
+    <DocumentationFile>$(OutputPath)$(AssemblyName).xml</DocumentationFile>
     <NoWarn>1701;1702;1705;1591</NoWarn>
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-    <DocumentationFile>bin\Debug\netcoreapp2.0\Lykke.Service.Nem.Api.xml</DocumentationFile>
+    <DocumentationFile>$(OutputPath)$(AssemblyName).xml</DocumentationFile>
     <NoWarn>1701;1702;1705;1591</NoWarn>
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
   <ItemGroup>
-    <None Update="appsettings.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
     <None Update="Dockerfile">
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </None>
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Lykke.Sdk" Version="5.0.0" />
-    <PackageReference Include="Lykke.Service.BlockchainApi.Contract" Version="13.1.1" />
-    <PackageReference Include="Microsoft.AspNetCore" Version="2.1.2" />
+    <PackageReference Include="io.nem1.sdk" Version="1.1.0" />
+    <PackageReference Include="Lykke.Sdk" Version="5.3.0" />
+    <PackageReference Include="Lykke.Service.BlockchainApi.Sdk" Version="0.0.25" />
+    <PackageReference Include="Microsoft.AspNetCore" Version="2.1.6" />
     <PackageReference Include="Microsoft.AspNetCore.StaticFiles" Version="2.1.1" />
-    <PackageReference Include="Portable.BouncyCastle" Version="1.8.2" />
-    <PackageReference Include="RestSharp" Version="106.3.1" />
-    <PackageReference Include="System.Configuration.ConfigurationManager" Version="4.5.0" />
-    <PackageReference Include="System.Reactive.Linq" Version="4.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="2.2.0" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Lykke.Service.Nem.Api.AzureRepositories\Lykke.Service.Nem.Api.AzureRepositories.csproj" />
-    <ProjectReference Include="..\Lykke.Service.Nem.Api.Domain\Lykke.Service.Nem.Api.Domain.csproj" />
-  </ItemGroup>
-  <ItemGroup>
-    <Reference Include="io.nem1.sdk">
-      <HintPath>..\..\..\nem1-sdk-csharp\src\nem1-sdk\bin\Release\netstandard2.0\io.nem1.sdk.dll</HintPath>
-    </Reference>
+    <Compile Remove="Helpers\AssetExtensions.cs" />
+    <Compile Remove="Models\Assets\CreateAssetRequest.cs" />
+    <Compile Remove="Models\Transactions\SignedTransactionContext.cs" />
   </ItemGroup>
   <Target Name="PrepublishScript" BeforeTargets="PrepareForPublish">
     <ItemGroup>

@@ -1,0 +1,30 @@
+NemApi:
+    Db:
+        LogsConnString:
+            settings-key: Nem-LogsConnString
+            types:
+              - AzureTableStorage
+        DataConnString:
+            settings-key: Nem-DataConnString
+            types:
+              - AzureTableStorage
+    ExplorerUrl:
+        settings-key: Nem-ExplorerUrl
+    NemUrl:
+        settings-key: Nem-Url
+    RequiredConfirmations:
+        settings-key: Nem-RequiredConfirmations
+    ExpiresInMinutes:
+        settings-key: Nem-ExpiresInMinutes
+SlackNotifications:
+    AzureQueue:
+        ConnectionString:
+            settings-key: SlackNotificationsConnString
+            types:
+                - AzureTableStorage
+        QueueName:
+            settings-key: SlackQueueName
+MonitoringServiceClient:
+    MonitoringServiceUrl:
+        settings-key: MonitoringServiceUrl
+
