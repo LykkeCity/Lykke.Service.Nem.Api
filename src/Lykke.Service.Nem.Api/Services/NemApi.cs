@@ -78,7 +78,7 @@ namespace Lykke.Service.Nem.Api.Services
                     throw new ArgumentException(JsonConvert.SerializeObject(result));
             }
 
-            return "";
+            return null;
         }
 
         public async Task<(string transactionContext, decimal fee, long expiration)> BuildTransactionAsync(Guid operationId, 
@@ -100,21 +100,11 @@ namespace Lykke.Service.Nem.Api.Services
             var memo = toAddressParts.Length > 1
                 ? toAddressParts[1]
                 : "";
-            var deadline = Deadline.CreateMinutes(_expiresInMinutes);
-            var tx = TransferTransaction.Create(
-                networkType,
-                deadline,
-                Address.CreateFromEncoded(toAddress),
-                new List<Mosaic> { Mosaic.CreateFromIdentifier(asset.AssetId, (ulong)asset.ToBaseUnit(action.Amount)) },
-                !string.IsNullOrEmpty(memo)
-                    ? PlainMessage.Create(memo) as IMessage
-                    : EmptyMessage.Create()
-            );
-            var fee = await tx.CalculateFee(new NamespaceMosaicHttp(_nemUrl));
-            var required = new List<Mosaic>
-            {
-                Xem.CreateAbsolute(fee.fee)
-            };
+            var message = !string.IsNullOrEmpty(memo)
+                ? PlainMessage.Create(memo) as IMessage
+                : EmptyMessage.Create();
+            var mosaic = Mosaic.CreateFromIdentifier(asset.AssetId, (ulong)asset.ToBaseUnit(action.Amount));
+            var fee = await TransferTransaction.CalculateFee(networkType, message, new [] { mosaic }, new NamespaceMosaicHttp(_nemUrl));
 
             if (includeFee)
             {
@@ -122,21 +112,22 @@ namespace Lykke.Service.Nem.Api.Services
                 {
                     checked
                     {
-                        if (tx.Mosaics[0].NamespaceName == Xem.NamespaceName &&
-                            tx.Mosaics[0].MosaicName == Xem.MosaicName)
+                        if (mosaic.NamespaceName == Xem.NamespaceName &&
+                            mosaic.MosaicName == Xem.MosaicName)
                         {
-                            tx.Mosaics[0].Amount -= fee.fee;
+                            mosaic.Amount -= fee.fee;
                         }
 
                         // only single transfers are supported,
                         // so there must be single levy
 
                         var levy = fee.levies.SingleOrDefault();
+
                         if (levy != null &&
-                            tx.Mosaics[0].NamespaceName == levy.NamespaceName &&
-                            tx.Mosaics[0].MosaicName == levy.MosaicName)
+                            mosaic.NamespaceName == levy.NamespaceName &&
+                            mosaic.MosaicName == levy.MosaicName)
                         {
-                            tx.Mosaics[0].Amount -= levy.Amount;
+                            mosaic.Amount -= levy.Amount;
                         }
                     }
                 }
@@ -146,33 +137,34 @@ namespace Lykke.Service.Nem.Api.Services
                 }
             }
 
-            required = required
-                .Concat(tx.Mosaics)
-                .Concat(fee.levies)
+            // check balances of FromAddress for all required assets
+
+            var fromAddress = action.From.Split(AddressSeparator)[0];
+            var owned = await new AccountHttp(_nemUrl).MosaicsOwned(Address.CreateFromEncoded(fromAddress));
+            var required = fee.levies
+                .Append(Xem.CreateAbsolute(fee.fee))
+                .Append(mosaic)
                 .GroupBy(m => new { m.NamespaceName, m.MosaicName })
                 .Select(g => new Mosaic(g.Key.NamespaceName, g.Key.MosaicName, g.Aggregate(0UL, (v, m) => v += m.Amount)))
                 .ToList();
 
-            // check balance of FromAddress for all required assets
-
-            var fromAddressParts = action.From.Split(AddressSeparator);
-            var fromAddress = fromAddressParts[0];
-            var mosaicOwned = await new AccountHttp(_nemUrl).MosaicsOwned(Address.CreateFromEncoded(fromAddress));
-
-            foreach (var mosaic in required)
+            foreach (var req in required)
             {
-                var owned = mosaicOwned.FirstOrDefault(m => m.NamespaceName == mosaic.NamespaceName && m.MosaicName == mosaic.MosaicName)?.Amount ?? 0UL;
-                if (owned < mosaic.Amount)
+                var own = owned.FirstOrDefault(m => m.NamespaceName == req.NamespaceName && m.MosaicName == req.MosaicName)?.Amount ?? 0UL;
+                if (own < req.Amount)
                 {
-                    throw new BlockchainException(BlockchainErrorCode.NotEnoughBalance,
-                        $"Not enough {mosaic.NamespaceName}:{mosaic.MosaicName}");
+                    throw new BlockchainException(BlockchainErrorCode.NotEnoughBalance, 
+                        $"Not enough {req.NamespaceName}:{req.MosaicName}");
                 }
             }
+
+            var tx = TransferTransaction.Create(networkType, Deadline.CreateMinutes(_expiresInMinutes), fee.fee,
+                Address.CreateFromEncoded(toAddress), new List<Mosaic> { mosaic }, message);
 
             return (
                 tx.ToJson(),
                 Convert.ToDecimal(fee.fee * 1e-6),
-                deadline.GetInstant()
+                tx.Deadline.GetInstant()
             );
         }
 
