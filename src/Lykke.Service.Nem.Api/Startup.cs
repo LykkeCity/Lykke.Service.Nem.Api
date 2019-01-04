@@ -42,7 +42,8 @@ namespace Lykke.Service.Nem.Api
                             settings.CurrentValue.NemApi.ExplorerUrl,
                             settings.CurrentValue.NemApi.RequiredConfirmations,
                             settings.CurrentValue.NemApi.ExpiresInMinutes
-                        )
+                        ),
+                        settings.CurrentValue.NemApi.ChaosKitty
                     );
                 };
             });
