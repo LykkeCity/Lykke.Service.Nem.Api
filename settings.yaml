@@ -20,9 +20,7 @@ NemApi:
         settings-key: Nem-ExpiresInMinutes
     ChaosKitty:
         StateOfChaos:
-            settings-key: NemJobStateOfChaos
-            types:
-                - Optional
+            settings-key: NemApi-StateOfChaos
 SlackNotifications:
     AzureQueue:
         ConnectionString:
