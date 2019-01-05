@@ -5,6 +5,7 @@ using System.Reactive.Linq;
 using System.Threading.Tasks;
 using Common;
 using io.nem1.sdk.Infrastructure.HttpRepositories;
+using io.nem1.sdk.Infrastructure.Imported.Client;
 using io.nem1.sdk.Model.Accounts;
 using io.nem1.sdk.Model.Mosaics;
 using io.nem1.sdk.Model.Transactions;
@@ -213,7 +214,16 @@ namespace Lykke.Service.Nem.Api.Services
 
         public async Task<BlockchainTransaction> GetTransactionAsync(string transactionHash, long expiration, IAsset asset)
         {
-            var tx = await new TransactionHttp(_nemUrl).GetByHash(transactionHash);
+            Transaction tx = null;
+
+            try
+            {
+                tx = await new TransactionHttp(_nemUrl).GetByHash(transactionHash);
+            }
+            catch (ApiException ex) when (ex.ErrorCode == 400 && ex.Message.Contains("Hash was not found in cache"))
+            {
+                // transaction not found
+            }
 
             if (tx == null || tx.TransactionInfo.Height == 0)
             {
