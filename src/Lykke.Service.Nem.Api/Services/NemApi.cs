@@ -218,10 +218,12 @@ namespace Lykke.Service.Nem.Api.Services
         public async Task<BlockchainTransaction> GetTransactionAsync(string transactionHash, long expiration, IAsset asset)
         {
             Transaction tx = null;
+            var lastConfirmedBlockNumber = Convert.ToUInt64(await GetLastConfirmedBlockNumberAsync());
 
             try
             {
-                tx = await new TransactionHttp(_nemUrl).GetByHash(transactionHash);
+                tx = await new TransactionHttp(_nemUrl)
+                    .GetByHash(transactionHash);
             }
             catch (ApiException ex) when (ex.ErrorCode == 400 && ex.Message.Contains("Hash was not found in cache"))
             {
@@ -230,13 +232,16 @@ namespace Lykke.Service.Nem.Api.Services
 
             if (tx == null || tx.TransactionInfo.Height == 0)
             {
-                var http = new BlockchainHttp(_nemUrl);
-                var currentBlockchainHeight = await http.GetBlockchainHeight();
-                var lastConfirmedBlock = await http.GetBlockByHeight(currentBlockchainHeight - (ulong)_requiredConfirmations);
+                var lastConfirmedBlock = await new BlockchainHttp(_nemUrl)
+                    .GetBlockByHeight(lastConfirmedBlockNumber);
 
                 return lastConfirmedBlock.TimeStamp > expiration
                     ? BlockchainTransaction.Failed("Transaction expired", BlockchainErrorCode.BuildingShouldBeRepeated)
                     : BlockchainTransaction.InProgress();
+            }
+            else if (tx.TransactionInfo.Height > lastConfirmedBlockNumber)
+            {
+                return BlockchainTransaction.InProgress();
             }
             else
             {
