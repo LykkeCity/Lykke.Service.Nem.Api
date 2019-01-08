@@ -16,6 +16,7 @@ using io.nem1.sdk.Model.Transactions.Messages;
 using Lykke.Service.BlockchainApi.Contract;
 using Lykke.Service.BlockchainApi.Contract.Common;
 using Lykke.Service.BlockchainApi.Sdk;
+using Lykke.Service.BlockchainApi.Sdk.Domain.DepositWallets;
 using Newtonsoft.Json;
 
 namespace Lykke.Service.Nem.Api.Services
@@ -32,13 +33,15 @@ namespace Lykke.Service.Nem.Api.Services
         readonly string _explorerUrl;
         readonly int _requiredConfirmations;
         readonly int _expiresInMinutes;
+        readonly DepositWalletRepository _deposits;
 
-        public NemApi(string nemUrl, string explorerUrl, int requiredConfirmations, int expiresInMinutes)
+        public NemApi(string nemUrl, string explorerUrl, int requiredConfirmations, int expiresInMinutes, DepositWalletRepository deposits)
         {
             _nemUrl = nemUrl;
             _explorerUrl = explorerUrl;
             _requiredConfirmations = requiredConfirmations;
             _expiresInMinutes = expiresInMinutes;
+            _deposits = deposits;
         }
 
         public Task<bool> AddressIsExistAsync(string address) => Task.FromResult(AddressIsValid(address));
@@ -105,7 +108,7 @@ namespace Lykke.Service.Nem.Api.Services
                 ? PlainMessage.Create(memo) as IMessage
                 : EmptyMessage.Create();
             var mosaic = Mosaic.CreateFromIdentifier(asset.AssetId, (ulong)asset.ToBaseUnit(action.Amount));
-            var fee = await TransferTransaction.CalculateFee(networkType, message, new [] { mosaic }, new NamespaceMosaicHttp(_nemUrl));
+            var fee = await TransferTransaction.CalculateFee(networkType, message, new[] { mosaic }, new NamespaceMosaicHttp(_nemUrl));
 
             if (includeFee)
             {
@@ -132,7 +135,7 @@ namespace Lykke.Service.Nem.Api.Services
                         }
                     }
                 }
-                catch(OverflowException)
+                catch (OverflowException)
                 {
                     throw new BlockchainException(BlockchainErrorCode.AmountIsTooSmall, "Amount is less than fee");
                 }
@@ -183,7 +186,7 @@ namespace Lykke.Service.Nem.Api.Services
                 AreManyInputsSupported = false,
                 AreManyOutputsSupported = false,
                 IsTransactionsRebuildingSupported = false,
-                IsTestingTransfersSupported = false,
+                IsTestingTransfersSupported = true,
                 IsPublicAddressExtensionRequired = false,
                 IsReceiveTransactionRequired = false,
                 CanReturnExplorerUrl = !string.IsNullOrEmpty(_explorerUrl),
@@ -273,5 +276,44 @@ namespace Lykke.Service.Nem.Api.Services
         }
 
         public Task ObserveAddressAsync(string address) => Task.CompletedTask;
+
+        public async Task<object> TestingTransfer(string from, string privateKey, string to, IAsset asset, decimal amount)
+        {
+            // instead of real transfer we just enroll fake
+            // balance within real wallet balance value
+
+            var toAddressParts = to.Split(AddressSeparator);
+            var toAddress = toAddressParts[0];
+
+            if (toAddressParts.Length != 2)
+            {
+                throw new NotSupportedException("Only fake destination supported");
+            }
+
+            var owned = await new AccountHttp(_nemUrl).MosaicsOwned(Address.CreateFromEncoded(toAddress));
+            var own = owned.FirstOrDefault(m => $"{m.NamespaceName}:{m.MosaicName}" == asset.AssetId)?.Amount ?? 0UL;
+
+            if (own < (ulong)asset.ToBaseUnit(amount))
+            {
+                throw new BlockchainException(BlockchainErrorCode.NotEnoughBalance,
+                    $"Not enough {asset.AssetId} on {toAddress} to enroll balance for {toAddressParts[1]}");
+            }
+
+            var now = DateTimeOffset.UtcNow;
+            var lastConfirmedBlockNumber = await GetLastConfirmedBlockNumberAsync();
+            var action = new BlockchainAction(
+                "testingTransfer",
+                lastConfirmedBlockNumber,
+                now.UtcDateTime,
+                now.ToUnixTimeMilliseconds().ToString(),
+                to,
+                asset.AssetId,
+                amount
+            );
+
+            await _deposits.EnrollIfObservedAsync(new[] { action });
+
+            return action;
+        }
     }
 }
