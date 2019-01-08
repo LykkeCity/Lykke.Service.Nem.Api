@@ -3,6 +3,7 @@ using System.Net.Http;
 using JetBrains.Annotations;
 using Lykke.Sdk;
 using Lykke.Service.BlockchainApi.Sdk;
+using Lykke.Service.BlockchainApi.Sdk.Domain.DepositWallets;
 using Lykke.Service.Nem.Api.Services;
 using Lykke.Service.Nem.Api.Settings;
 using Lykke.SettingsReader;
@@ -37,11 +38,12 @@ namespace Lykke.Service.Nem.Api
                 {
                     sc.AddBlockchainApi(
                         settings.ConnectionString(s => s.NemApi.Db.DataConnString),
-                        _ => new NemApi(
+                        sp => new NemApi(
                             settings.CurrentValue.NemApi.NemUrl,
                             settings.CurrentValue.NemApi.ExplorerUrl,
                             settings.CurrentValue.NemApi.RequiredConfirmations,
-                            settings.CurrentValue.NemApi.ExpiresInMinutes
+                            settings.CurrentValue.NemApi.ExpiresInMinutes,
+                            sp.GetRequiredService<DepositWalletRepository>()
                         ),
                         settings.CurrentValue.NemApi.ChaosKitty
                     );
