@@ -187,7 +187,7 @@ namespace Lykke.Service.Nem.Api.Services
                 AreManyOutputsSupported = false,
                 IsTransactionsRebuildingSupported = false,
                 IsTestingTransfersSupported = true,
-                IsPublicAddressExtensionRequired = false,
+                IsPublicAddressExtensionRequired = true,
                 IsReceiveTransactionRequired = false,
                 CanReturnExplorerUrl = !string.IsNullOrEmpty(_explorerUrl),
                 IsAddressMappingRequired = false,
