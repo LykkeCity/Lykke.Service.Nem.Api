@@ -303,7 +303,7 @@ namespace Lykke.Service.Nem.Api.Services
             var lastConfirmedBlockNumber = await GetLastConfirmedBlockNumberAsync();
             var action = new BlockchainAction(
                 "testingTransfer",
-                lastConfirmedBlockNumber,
+                lastConfirmedBlockNumber * 10 + 1,
                 now.UtcDateTime,
                 now.ToUnixTimeMilliseconds().ToString(),
                 to,
