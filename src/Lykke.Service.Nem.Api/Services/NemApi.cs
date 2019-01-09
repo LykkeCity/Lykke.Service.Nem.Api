@@ -1,15 +1,12 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Reactive.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using Common;
 using io.nem1.sdk.Infrastructure.HttpRepositories;
 using io.nem1.sdk.Infrastructure.Imported.Client;
 using io.nem1.sdk.Model.Accounts;
-using io.nem1.sdk.Model.Blockchain;
 using io.nem1.sdk.Model.Mosaics;
 using io.nem1.sdk.Model.Transactions;
 using io.nem1.sdk.Model.Transactions.Messages;
