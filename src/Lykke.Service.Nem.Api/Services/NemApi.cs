@@ -24,7 +24,7 @@ namespace Lykke.Service.Nem.Api.Services
         const string XEM = "nem:xem";
 
         readonly static DateTime _nemesis = 
-            new DateTime(2015, 03, 29, 0, 6, 25, 0).ToUniversalTime();
+            new DateTime(2015, 03, 29, 0, 6, 25, 0, DateTimeKind.Utc);
 
         readonly string _nemUrl;
         readonly string _explorerUrl;
@@ -76,7 +76,7 @@ namespace Lykke.Service.Nem.Api.Services
                 case 5:
                     throw new BlockchainException(BlockchainErrorCode.NotEnoughBalance, "Not enough balance");
                 default:
-                    throw new ArgumentException(JsonConvert.SerializeObject(result));
+                    throw new ArgumentException(result.Message);
             }
 
             return null;
@@ -94,7 +94,8 @@ namespace Lykke.Service.Nem.Api.Services
                 throw new ArgumentException("Transaction must contain a single transfer only");
             }
 
-            var networkType = await new NodeHttp(_nemUrl).GetNetworkType();
+            var nodeHttp = new NodeHttp(_nemUrl);
+            var networkType = await nodeHttp.GetNetworkType();
             var action = actions[0];
             var toAddressParts = action.To.Split(AddressSeparator);
             var toAddress = toAddressParts[0];
@@ -159,8 +160,16 @@ namespace Lykke.Service.Nem.Api.Services
                 }
             }
 
-            var tx = TransferTransaction.Create(networkType, Deadline.CreateMinutes(_expiresInMinutes), fee.fee,
-                Address.CreateFromEncoded(toAddress), new List<Mosaic> { mosaic }, message);
+            var networkTime = (int)(await nodeHttp.GetExtendedNodeInfo()).NisInfo.CurrentTime;
+
+            var tx = TransferTransaction.Create(
+                networkType, 
+                new Deadline(networkTime + _expiresInMinutes * 60),
+                fee.fee,
+                Address.CreateFromEncoded(toAddress),
+                new List<Mosaic> { mosaic }, 
+                message, 
+                networkTime);
 
             return (
                 tx.ToJson(),
