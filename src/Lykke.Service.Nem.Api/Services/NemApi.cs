@@ -285,41 +285,27 @@ namespace Lykke.Service.Nem.Api.Services
 
         public async Task<object> TestingTransfer(string from, string privateKey, string to, IAsset asset, decimal amount)
         {
-            // instead of real transfer we just enroll fake
-            // balance within real wallet balance value
-
+            var nodeHttp = new NodeHttp(_nemUrl);
+            var networkType = await nodeHttp.GetNetworkType();
+            var networkTime = (int)(await nodeHttp.GetExtendedNodeInfo()).NisInfo.CurrentTime;
             var toAddressParts = to.Split(AddressSeparator);
-            var toAddress = toAddressParts[0];
+            var message = toAddressParts.Length > 1
+                ? PlainMessage.Create(toAddressParts[1]) as IMessage
+                : EmptyMessage.Create();
+            var mosaic = Mosaic.CreateFromIdentifier(asset.AssetId, (ulong)asset.ToBaseUnit(amount));
+            var fee = await TransferTransaction.CalculateFee(networkType, message, new[] { mosaic }, new NamespaceMosaicHttp(_nemUrl));
+            var tx = TransferTransaction.Create(
+                networkType,
+                new Deadline(networkTime + _expiresInMinutes * 60),
+                fee.fee,
+                Address.CreateFromEncoded(toAddressParts[0]),
+                new List<Mosaic> { mosaic },
+                message,
+                networkTime);
+            var signed = tx.SignWith(KeyPair.CreateFromPrivateKey(privateKey));
+            var result = await new TransactionHttp(_nemUrl).Announce(signed);
 
-            if (toAddressParts.Length != 2)
-            {
-                throw new NotSupportedException("Only fake destination supported");
-            }
-
-            var owned = await new AccountHttp(_nemUrl).MosaicsOwned(Address.CreateFromEncoded(toAddress));
-            var own = owned.FirstOrDefault(m => $"{m.NamespaceName}:{m.MosaicName}" == asset.AssetId)?.Amount ?? 0UL;
-
-            if (own < (ulong)asset.ToBaseUnit(amount))
-            {
-                throw new BlockchainException(BlockchainErrorCode.NotEnoughBalance,
-                    $"Not enough {asset.AssetId} on {toAddress} to enroll balance for {toAddressParts[1]}");
-            }
-
-            var now = DateTimeOffset.UtcNow;
-            var lastConfirmedBlockNumber = await GetLastConfirmedBlockNumberAsync();
-            var action = new BlockchainAction(
-                "testingTransfer",
-                lastConfirmedBlockNumber * 10 + 1,
-                now.UtcDateTime,
-                now.ToUnixTimeMilliseconds().ToString(),
-                to,
-                asset.AssetId,
-                amount
-            );
-
-            await _deposits.EnrollIfObservedAsync(new[] { action });
-
-            return action;
+            return result;
         }
     }
 }
