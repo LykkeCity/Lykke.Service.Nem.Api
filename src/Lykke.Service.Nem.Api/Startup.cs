@@ -1,7 +1,7 @@
 ﻿using System;
-using System.Net.Http;
 using JetBrains.Annotations;
 using Lykke.Sdk;
+using Lykke.Service.BlockchainApi.Contract;
 using Lykke.Service.BlockchainApi.Sdk;
 using Lykke.Service.BlockchainApi.Sdk.Domain.DepositWallets;
 using Lykke.Service.Nem.Api.Services;
@@ -56,6 +56,7 @@ namespace Lykke.Service.Nem.Api
         {
             app.UseLykkeConfiguration(options =>
             {
+                options.DefaultErrorHandler = ex => BlockchainErrorResponse.Create(ex.ToString());
                 options.SwaggerOptions = _swaggerOptions;
             });
         }
