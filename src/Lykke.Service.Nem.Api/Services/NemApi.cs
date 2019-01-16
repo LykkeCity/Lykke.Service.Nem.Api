@@ -29,15 +29,15 @@ namespace Lykke.Service.Nem.Api.Services
         readonly string _nemUrl;
         readonly string _explorerUrl;
         readonly int _requiredConfirmations;
-        readonly int _expiresInMinutes;
+        readonly int _expiresInSeconds;
         readonly DepositWalletRepository _deposits;
 
-        public NemApi(string nemUrl, string explorerUrl, int requiredConfirmations, int expiresInMinutes, DepositWalletRepository deposits)
+        public NemApi(string nemUrl, string explorerUrl, int requiredConfirmations, TimeSpan expiresIn, DepositWalletRepository deposits)
         {
             _nemUrl = nemUrl;
             _explorerUrl = explorerUrl;
             _requiredConfirmations = requiredConfirmations;
-            _expiresInMinutes = expiresInMinutes;
+            _expiresInSeconds = Convert.ToInt32(expiresIn.TotalSeconds);
             _deposits = deposits;
         }
 
@@ -164,7 +164,7 @@ namespace Lykke.Service.Nem.Api.Services
 
             var tx = TransferTransaction.Create(
                 networkType, 
-                new Deadline(networkTime + _expiresInMinutes * 60),
+                new Deadline(networkTime + _expiresInSeconds),
                 fee.fee,
                 Address.CreateFromEncoded(toAddress),
                 new List<Mosaic> { mosaic }, 
@@ -208,7 +208,7 @@ namespace Lykke.Service.Nem.Api.Services
                 PublicAddressExtension = new PublicAddressExtensionConstantsContract 
                 { 
                     BaseDisplayName = "Address",
-                    DisplayName = "Message",
+                    DisplayName = "Plain (not encrypted) message",
                     Separator = AddressSeparator
                 }
             };
@@ -296,7 +296,7 @@ namespace Lykke.Service.Nem.Api.Services
             var fee = await TransferTransaction.CalculateFee(networkType, message, new[] { mosaic }, new NamespaceMosaicHttp(_nemUrl));
             var tx = TransferTransaction.Create(
                 networkType,
-                new Deadline(networkTime + _expiresInMinutes * 60),
+                new Deadline(networkTime + _expiresInSeconds),
                 fee.fee,
                 Address.CreateFromEncoded(toAddressParts[0]),
                 new List<Mosaic> { mosaic },
