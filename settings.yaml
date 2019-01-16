@@ -16,8 +16,8 @@ NemApi:
         settings-key: Nem-Url
     RequiredConfirmations:
         settings-key: Nem-RequiredConfirmations
-    ExpiresInMinutes:
-        settings-key: Nem-ExpiresInMinutes
+    ExpiresIn:
+        settings-key: Nem-ExpiresIn
     ChaosKitty:
         StateOfChaos:
             settings-key: NemApi-StateOfChaos
